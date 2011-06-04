@@ -9,13 +9,13 @@ import robocode.ScannedRobotEvent;
 import robocode.StatusEvent;
 import robocode.TurnCompleteCondition;
 
-public class CrazyStrategyImpl implements WalkingStrategy {
+public class CrazyRobot extends ImRobot {
 
 	private double xAxisDistancePermitted = 50;
 	private double yAxisDistancePermitted = 50;
 	private ImRobot robot;
 
-	public CrazyStrategyImpl(ImRobot robot) {
+	public CrazyRobot(ImRobot robot) {
 
 		this.robot = robot;
 	}
@@ -24,36 +24,36 @@ public class CrazyStrategyImpl implements WalkingStrategy {
 
 		robot.movingForward = true;
 
-		Turning turning = Util.turnToDirection(robot, 92);
+		Turning turning = turnToDirection(92);
 
 		robot.turn(turning);
 		robot.ahead(100);
 
-		turning = Util.turnToDirection(robot, 182);
+		turning = turnToDirection(182);
 
 		robot.turn(turning);
 		robot.ahead(100);
 		robot.turnRadarLeft(360);
 
-		Route route = Util.goToXY(robot, 300, 300);
+		Route route = goToXY(300, 300);
 
 		robot.turn(route.getTurning());
 		robot.ahead(route.getDistance());
 		robot.turnRadarLeft(360);
 
-		route = Util.goToXY(robot, 60, 60);
+		route = goToXY(60, 60);
 
 		robot.turn(route.getTurning());
 		robot.ahead(route.getDistance());
 		robot.turnRadarLeft(360);
 
-		route = Util.goToXY(robot, 60, 560);
+		route = goToXY(60, 560);
 
 		robot.turn(route.getTurning());
 		robot.ahead(route.getDistance());
 		robot.turnRadarLeft(360);
 
-		route = Util.goToXY(robot, 660, 560);
+		route = goToXY(660, 560);
 
 		robot.turn(route.getTurning());
 		robot.ahead(route.getDistance());
@@ -118,7 +118,7 @@ public class CrazyStrategyImpl implements WalkingStrategy {
 		if ((bearing <= 180 && bearing >= 170) || (bearing >= -180 && bearing <= -170)) {
 
 			// turn
-			Turning turning = Util.turnToDirection(robot, Util.escapeFromWall(robot));
+			Turning turning = turnToDirection(Util.escapeFromWall(robot));
 
 			robot.setTurn(turning);
 		}
@@ -138,7 +138,7 @@ public class CrazyStrategyImpl implements WalkingStrategy {
 		if (escapingFromWall)
 			return;
 
-		double[] axisDistance = Util.howNearAxis(robot);
+		double[] axisDistance = howNearAxis();
 
 		// System.out.println("(" + robot.getX() + "," + robot.getY() + ")");
 
@@ -148,7 +148,7 @@ public class CrazyStrategyImpl implements WalkingStrategy {
 
 		if (axisDistance[0] <= xAxisDistancePermitted || axisDistance[1] <= yAxisDistancePermitted) {
 
-			Axis[] nearestAxis = Util.getNearestAxis(robot);
+			Axis[] nearestAxis = getNearestAxis();
 			Direction direction = Util.getDirection(robot);
 
 			if (!robot.movingForward)
@@ -171,7 +171,7 @@ public class CrazyStrategyImpl implements WalkingStrategy {
 				escapingFromWall = true;
 				// System.out.println("Vai bater!");
 
-				Turning turning = Util.turnToDirection(robot, Util.escapeFromWall(robot));
+				Turning turning = turnToDirection(Util.escapeFromWall(robot));
 
 				robot.stop(true);
 				robot.turn(turning);
