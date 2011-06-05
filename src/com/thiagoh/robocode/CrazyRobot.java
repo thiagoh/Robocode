@@ -1,5 +1,7 @@
 package com.thiagoh.robocode;
 
+import java.util.LinkedList;
+
 import org.apache.commons.lang.ArrayUtils;
 
 import robocode.HitByBulletEvent;
@@ -13,76 +15,23 @@ public class CrazyRobot extends ImRobot {
 
 	private double xAxisDistancePermitted = 50;
 	private double yAxisDistancePermitted = 50;
-	private ImRobot robot;
 
-	public CrazyRobot(ImRobot robot) {
+	public CrazyRobot() {
 
-		this.robot = robot;
 	}
 
-	public void main() {
+	public void run() {
 
-		robot.movingForward = true;
+		while (true) {
 
-		Turning turning = turnToDirection(92);
+			movingForward = true;
 
-		robot.turn(turning);
-		robot.ahead(100);
+			Route route = goToXY(300, 300);
 
-		turning = turnToDirection(182);
-
-		robot.turn(turning);
-		robot.ahead(100);
-		robot.turnRadarLeft(360);
-
-		Route route = goToXY(300, 300);
-
-		robot.turn(route.getTurning());
-		robot.ahead(route.getDistance());
-		robot.turnRadarLeft(360);
-
-		route = goToXY(60, 60);
-
-		robot.turn(route.getTurning());
-		robot.ahead(route.getDistance());
-		robot.turnRadarLeft(360);
-
-		route = goToXY(60, 560);
-
-		robot.turn(route.getTurning());
-		robot.ahead(route.getDistance());
-		robot.turnRadarLeft(360);
-
-		route = goToXY(660, 560);
-
-		robot.turn(route.getTurning());
-		robot.ahead(route.getDistance());
-		robot.turnRadarLeft(360);
-
-		// Turning turn = Util.turnToDirection(robot.getHeading(),
-		// Direction.NORTH);
-		//
-		// robot.setTurn(turn);
-		//
-		// robot.waitFor(new TurnCompleteCondition(robot));
-		//
-		// turn = Util.turnToDirection(robot.getHeading(), Direction.EAST);
-		//
-		// robot.setTurn(turn);
-		//
-		// robot.waitFor(new TurnCompleteCondition(robot));
-		//
-		// turn = Util.turnToDirection(robot.getHeading(), Direction.SOUTH);
-		//
-		// robot.setTurn(turn);
-		//
-		// robot.waitFor(new TurnCompleteCondition(robot));
-		//
-		// turn = Util.turnToDirection(robot.getHeading(), Direction.WEST);
-		//
-		// robot.setTurn(turn);
-		//
-		// robot.waitFor(new TurnCompleteCondition(robot));
+			turn(route.getTurning());
+			ahead(route.getDistance());
+			turnRadarRight(360);
+		}
 	}
 
 	public void onHitRobot(HitRobotEvent event) {
@@ -97,15 +46,15 @@ public class CrazyRobot extends ImRobot {
 
 	private void reverseDirection() {
 
-		if (robot.movingForward) {
+		if (movingForward) {
 
-			robot.setBack(40000);
-			robot.movingForward = false;
+			setBack(40000);
+			movingForward = false;
 
 		} else {
 
-			robot.setAhead(40000);
-			robot.movingForward = true;
+			setAhead(40000);
+			movingForward = true;
 		}
 	}
 
@@ -113,22 +62,20 @@ public class CrazyRobot extends ImRobot {
 
 		double bearing = event.getBearing();
 
-		System.out.println(bearing);
-
 		if ((bearing <= 180 && bearing >= 170) || (bearing >= -180 && bearing <= -170)) {
 
 			// turn
-			Turning turning = turnToDirection(Util.escapeFromWall(robot));
+			Turning turning = turnToDirection(Util.escapeFromWall(this));
 
-			robot.setTurn(turning);
+			setTurn(turning);
 		}
 
 		// go ahead
-		double distance = robot.getWidth() * Math.tan(bearing);
+		double distance = getWidth() * Math.tan(bearing);
 
-		robot.setAhead(distance);
+		setAhead(distance);
 
-		robot.waitFor(new TurnCompleteCondition(robot));
+		waitFor(new TurnCompleteCondition(this));
 	}
 
 	private boolean escapingFromWall = false;
@@ -140,7 +87,7 @@ public class CrazyRobot extends ImRobot {
 
 		double[] axisDistance = howNearAxis();
 
-		// System.out.println("(" + robot.getX() + "," + robot.getY() + ")");
+		// System.out.println("(" + getX() + "," + getY() + ")");
 
 		// System.out.println("to: " + Util.getDirection(robot));
 
@@ -149,9 +96,9 @@ public class CrazyRobot extends ImRobot {
 		if (axisDistance[0] <= xAxisDistancePermitted || axisDistance[1] <= yAxisDistancePermitted) {
 
 			Axis[] nearestAxis = getNearestAxis();
-			Direction direction = Util.getDirection(robot);
+			Direction direction = Util.getDirection(this);
 
-			if (!robot.movingForward)
+			if (!movingForward)
 				direction = direction.invert();
 
 			// System.out.println("Direction: " + direction + " / xAxis: " +
@@ -171,20 +118,115 @@ public class CrazyRobot extends ImRobot {
 				escapingFromWall = true;
 				// System.out.println("Vai bater!");
 
-				Turning turning = turnToDirection(Util.escapeFromWall(robot));
+				Turning turning = turnToDirection(Util.escapeFromWall(this));
 
-				robot.stop(true);
-				robot.turn(turning);
-				robot.ahead(100);
-				robot.resume();
+				stop(true);
+				turn(turning);
+				ahead(100);
+				resume();
 				escapingFromWall = false;
 			}
 		}
 	}
 
+	private LinkedList<Double[]> bearingClockwise = new LinkedList<Double[]>();
+	private LinkedList<Double[]> bearingAntiClockwise = new LinkedList<Double[]>();
+
 	public void onScannedRobot(ScannedRobotEvent event) {
 
-		robot.turnGunRight(event.getBearing());
-		robot.setFire(2);
+		double bearing = event.getBearing();
+
+		if (bearing < 0)
+			bearing = 360 + bearing;
+
+		bearingClockwise.push(new Double[] { bearing, event.getDistance() });
+		bearingAntiClockwise.push(new Double[] { bearing, event.getDistance() });
+
+		if (bearingClockwise.size() >= 4) {
+
+			Double[] last = null;
+			Double[] cur = null;
+
+			double lastBearing = 0;
+			double curBearing = 0;
+			boolean alwaysBigger = true;
+
+			for (int i = 1; i <= 3; i++) {
+
+				lastBearing = curBearing;
+
+				if (i == 1) {
+
+					last = bearingClockwise.pop();
+					lastBearing = last[0];
+				}
+
+				cur = bearingClockwise.peek();
+				curBearing = cur[0];
+
+				if (after(curBearing, lastBearing, true))
+					alwaysBigger = false;
+			}
+
+			// double a = cur[1];
+			// double b = last[1];
+			// double c = Math.sqrt(Math.pow(a, 2) + Math.pow(b, 2) - (2 * a * b
+			// * Math.cos(lastBearing)));
+
+			if (alwaysBigger) {
+
+				System.out.println("ADD 30");
+				bearing += 30;
+
+			} else {
+
+				// boolean alwaysSmaller = true;
+				//
+				// for (int i = 1; i <= 3; i++) {
+				//
+				// lastBearing = curBearing;
+				// if (i == 1) {
+				//
+				// last = bearingAntiClockwise.pop();
+				// lastBearing = last[0];
+				// }
+				//
+				// cur = bearingAntiClockwise.peek();
+				// curBearing = cur[0];
+				//
+				// if (after(curBearing, lastBearing, false))
+				// alwaysBigger = false;
+				// }
+				//
+				// if (alwaysSmaller) {
+				//
+				// bearing -= 20;
+				// }
+			}
+		}
+
+		if (bearing > 360) 
+			bearing = bearing - 360;
+
+		turnGun(turnToDirection(getGunHeading(), bearing));
+		setFire(0.1);
+	}
+
+	private boolean after(double hAtT2, double hAtT1, boolean clockwiseDirection) {
+
+		if (clockwiseDirection) {
+
+			if (hAtT2 > hAtT1)
+				return true;
+			else
+				return false;
+
+		} else {
+
+			if (hAtT2 < hAtT1)
+				return true;
+			else
+				return false;
+		}
 	}
 }

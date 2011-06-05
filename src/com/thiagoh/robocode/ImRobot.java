@@ -23,8 +23,16 @@ public abstract class ImRobot extends AdvancedRobot {
 			heading = 360 - teta;
 		else if (x > rx && y > ry)
 			heading = teta;
-		else
+		else if (x > rx && y < ry)
 			heading = 180 - teta;
+		else if (x == rx && y > ry)
+			heading = 0;
+		else if (x == rx && y < ry)
+			heading = 180;
+		else if (x > rx && y == ry)
+			heading = 90;
+		else if (x < rx && y == ry)
+			heading = 270;
 
 		double distance = Math.sqrt(Math.pow(catetoOposto, 2) + Math.pow(catetoAdjacente, 2));
 
@@ -205,6 +213,11 @@ public abstract class ImRobot extends AdvancedRobot {
 			}
 		}
 
+		if (turning == null) {
+			System.out.println("headingDegrees: " + headingDegrees + " toDegrees: " + toDegrees);
+			System.out.println("quadrantFrom: " + quadrantFrom + " quadrantTo: " + quadrantTo);
+		}
+
 		return turning;
 	}
 
@@ -246,6 +259,18 @@ public abstract class ImRobot extends AdvancedRobot {
 			turnLeft(degrees);
 		else
 			turnRight(degrees);
+	}
+
+	public void turnGun(Turning turning) {
+		turnGun(turning.getRotation(), turning.getValue());
+	}
+
+	public void turnGun(Rotation rotation, double degrees) {
+
+		if (Rotation.LEFT == rotation)
+			turnGunLeft(degrees);
+		else
+			turnGunRight(degrees);
 	}
 
 	public void setTurn(Turning turning) {

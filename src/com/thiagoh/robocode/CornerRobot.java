@@ -12,53 +12,40 @@ public class CornerRobot extends ImRobot {
 
 	}
 
-	public void main() {
+	public void run() {
 
-		movingForward = true;
+		while (true) {
 
-		Route route = goToXY(60, 60);
+			movingForward = true;
 
-		turn(route.getTurning());
-		ahead(route.getDistance());
+			Route route = goToXY(60, 60);
 
-		route = goToXY(60, 600);
+			turn(route.getTurning());
+			ahead(route.getDistance());
 
-		turn(route.getTurning());
-		ahead(route.getDistance());
+			route = goToXY(60, getBattleFieldHeight() - 60);
 
-		route = goToXY(660, 660);
+			turn(route.getTurning());
+			ahead(route.getDistance());
 
-		turn(route.getTurning());
-		ahead(route.getDistance());
+			route = goToXY(getBattleFieldWidth() - 60, getBattleFieldHeight() - 60);
 
-		route = goToXY(660, 60);
+			turn(route.getTurning());
+			ahead(route.getDistance());
 
-		turn(route.getTurning());
-		ahead(route.getDistance());
+			route = goToXY(getBattleFieldWidth() - 60, 60);
+
+			turn(route.getTurning());
+			ahead(route.getDistance());
+		}
 	}
 
 	public void onHitRobot(HitRobotEvent event) {
 
-		reverseDirection();
 	}
 
 	public void onHitWall(HitWallEvent event) {
 
-		reverseDirection();
-	}
-
-	private void reverseDirection() {
-
-		if (movingForward) {
-
-			setBack(40000);
-			movingForward = false;
-
-		} else {
-
-			setAhead(40000);
-			movingForward = true;
-		}
 	}
 
 	public void onHitBullet(HitByBulletEvent event) {
