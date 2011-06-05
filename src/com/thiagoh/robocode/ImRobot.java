@@ -1,6 +1,7 @@
 package com.thiagoh.robocode;
 
 import robocode.AdvancedRobot;
+import robocode.Bullet;
 
 public abstract class ImRobot extends AdvancedRobot {
 
@@ -70,6 +71,9 @@ public abstract class ImRobot extends AdvancedRobot {
 	}
 
 	public Turning turnToDirection(double headingDegrees, double toDegrees) {
+
+		if (toDegrees == 360)
+			toDegrees = Axis.UP.getValue();
 
 		Quadrant quadrantFrom = Util.getQuadrant(headingDegrees);
 		Quadrant quadrantTo = Util.getQuadrant(toDegrees);
@@ -284,4 +288,5 @@ public abstract class ImRobot extends AdvancedRobot {
 		else
 			setTurnRight(degrees);
 	}
+
 }

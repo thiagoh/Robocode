@@ -14,29 +14,39 @@ public class CornerRobot extends ImRobot {
 
 	public void run() {
 
+		int count = 0;
 		while (true) {
 
-			movingForward = true;
+			if (count < 2) {
 
-			Route route = goToXY(60, 60);
+				movingForward = true;
 
-			turn(route.getTurning());
-			ahead(route.getDistance());
+				Route route = goToXY(60, 60);
 
-			route = goToXY(60, getBattleFieldHeight() - 60);
+				turn(route.getTurning());
+				ahead(route.getDistance());
 
-			turn(route.getTurning());
-			ahead(route.getDistance());
+				route = goToXY(60, getBattleFieldHeight() - 60);
 
-			route = goToXY(getBattleFieldWidth() - 60, getBattleFieldHeight() - 60);
+				turn(route.getTurning());
+				ahead(route.getDistance());
 
-			turn(route.getTurning());
-			ahead(route.getDistance());
+				route = goToXY(getBattleFieldWidth() - 60, getBattleFieldHeight() - 60);
 
-			route = goToXY(getBattleFieldWidth() - 60, 60);
+				turn(route.getTurning());
+				ahead(route.getDistance());
 
-			turn(route.getTurning());
-			ahead(route.getDistance());
+				route = goToXY(getBattleFieldWidth() - 60, 60);
+
+				turn(route.getTurning());
+				ahead(route.getDistance());
+
+				count++;
+				
+			} else {
+				
+				doNothing();
+			}
 		}
 	}
 
