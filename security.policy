@@ -1,0 +1,9 @@
+/* AUTOMATICALLY GENERATED ON Sun Jun 19 14:48:39 BRT 2011*/
+/* DO NOT EDIT */
+
+keystore "keystore.jks", "jks";
+
+grant signedBy "com.thiagoh",  codeBase "file://D:/Programming/java/workspace/Robocode/" {
+  permission java.security.AllPermission;
+};
+

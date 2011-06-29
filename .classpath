@@ -8,5 +8,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="lib" path="lib/commons-lang-2.6.jar" sourcepath="D:/Programming/java/commons-lang-2.6/commons-lang-2.6-sources.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/drools"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

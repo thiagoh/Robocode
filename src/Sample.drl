@@ -1,0 +1,30 @@
+package com.thiagoh.robocode
+ 
+import com.thiagoh.robocode.ImRobot;
+import java.util.logging.Logger;
+
+global Logger log;
+
+rule "My robot looseEnergy"
+	dialect "java" 
+	no-loop true
+	when
+		$m : ImRobot()
+		$i : RobotStats()
+		eval( ($m.getEnergy() * 100) / $m.getStartedEnergy() < 40 )
+	then
+		log.info("Menos de 40% de energia... increaseBulletPower");
+		$i.increaseBulletPower();
+		update($i);
+end
+
+rule "true"
+	dialect "java" 
+	no-loop true
+	when
+		$m : ImRobot()
+		$i : RobotStats()
+		
+	then
+		log.info($m.getEnergy() + " | " + $m.getStartedEnergy());
+end

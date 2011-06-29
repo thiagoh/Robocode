@@ -1,11 +1,34 @@
 package com.thiagoh.robocode;
 
 import robocode.AdvancedRobot;
-import robocode.Bullet;
+import robocode.TeamRobot;
 
-public abstract class ImRobot extends AdvancedRobot {
+public abstract class ImRobot extends TeamRobot {
 
 	protected boolean movingForward;
+	private double startedEnergy;
+	private RobotStats info;
+
+	public ImRobot() {
+
+		super();
+
+		info = new RobotStats();
+	}
+
+	public void init() {
+
+		startedEnergy = getEnergy();
+		movingForward = true;
+	}
+
+	public RobotStats getStats() {
+		return info;
+	}
+
+	public double getStartedEnergy() {
+		return startedEnergy;
+	}
 
 	public Route goToXY(double x, double y) {
 

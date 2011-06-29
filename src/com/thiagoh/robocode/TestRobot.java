@@ -14,7 +14,7 @@ import robocode.RobotDeathEvent;
 import robocode.ScannedRobotEvent;
 import robocode.TurnCompleteCondition;
 
-public class TestRobot extends AdvancedRobot {
+public class TestRobot extends ImRobot {
 
 	private double power;
 	private double bearingTo;
@@ -154,6 +154,9 @@ public class TestRobot extends AdvancedRobot {
 	}
 
 	public void onScannedRobot(ScannedRobotEvent event) {
+
+		if (isTeammate(event.getName()))
+			return;
 
 		scannedMap.put(event.getName(), event);
 

@@ -2,16 +2,29 @@ package com.thiagoh.robocode;
 
 import java.awt.Color;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import org.apache.commons.lang.ArrayUtils;
+import org.drools.KnowledgeBase;
+import org.drools.KnowledgeBaseFactory;
+import org.drools.builder.KnowledgeBuilder;
+import org.drools.builder.KnowledgeBuilderError;
+import org.drools.builder.KnowledgeBuilderErrors;
+import org.drools.builder.KnowledgeBuilderFactory;
+import org.drools.builder.ResourceType;
+import org.drools.io.ResourceFactory;
+import org.drools.logger.KnowledgeRuntimeLogger;
+import org.drools.logger.KnowledgeRuntimeLoggerFactory;
+import org.drools.runtime.StatefulKnowledgeSession;
 
 import robocode.BulletHitEvent;
 import robocode.BulletMissedEvent;
 import robocode.HitByBulletEvent;
 import robocode.HitRobotEvent;
 import robocode.HitWallEvent;
+import robocode.MessageEvent;
+import robocode.MoveCompleteCondition;
 import robocode.Rules;
 import robocode.ScannedRobotEvent;
 import robocode.StatusEvent;
@@ -20,15 +33,20 @@ import robocode.util.Utils;
 
 public class CrazyRobot extends ImRobot {
 
+	private static Logger log = Logger.getLogger(CrazyRobot.class.getName());
+
+	private final static double DEFAULT_DISTANCE_TO_MOVE = 100;
+	private double distanceToMove = DEFAULT_DISTANCE_TO_MOVE;
 	private double xAxisDistancePermitted = 50;
 	private double yAxisDistancePermitted = 50;
-	private Map<String, Double> powerMap;
-	private Map<String, Double> bulletsHitMap;
-	private Map<Integer, String> bulletsFiredMap;
-	private Map<String, Integer> bulletsMissedMap;
+	private long lastBulletFiredTime;
 
 	private Map<String, StrategySucess> advanceGunStrategyMap;
 	private Map<String, StrategySucess> beCloseToEnemyStrategyMap;
+
+	private KnowledgeBase knowledgeBase;
+	private StatefulKnowledgeSession knowledgeSession;
+	private KnowledgeRuntimeLogger logger;
 
 	public CrazyRobot() {
 
@@ -36,55 +54,135 @@ public class CrazyRobot extends ImRobot {
 
 	public void run() {
 
-		powerMap = new HashMap<String, Double>();
-		bulletsHitMap = new HashMap<String, Double>();
-		bulletsFiredMap = new HashMap<Integer, String>();
-		bulletsMissedMap = new HashMap<String, Integer>();
+		init();
+
+		try {
+
+			knowledgeBase = readKnowledgeBase();
+
+			knowledgeSession = knowledgeBase.newStatefulKnowledgeSession();
+
+			logger = KnowledgeRuntimeLoggerFactory.newFileLogger(knowledgeSession, "test");
+
+			knowledgeSession.setGlobal("log", log);
+
+			knowledgeSession.insert(this);
+			knowledgeSession.insert(getStats());
+
+		} catch (Exception e) {
+
+			log.severe(e.getMessage());
+		}
+
 		advanceGunStrategyMap = new HashMap<String, StrategySucess>();
 		beCloseToEnemyStrategyMap = new HashMap<String, StrategySucess>();
 
 		setBodyColor(Color.red);
-		setGunColor(Color.gray);
+		setGunColor(Color.black);
 		setRadarColor(Color.darkGray);
-
-		Route route = goToXY(300, 300);
-
-		turn(route.getTurning());
-		ahead(route.getDistance());
+		setBulletColor(Color.orange);
 
 		while (true) {
 
 			movingForward = true;
 
-			turnRadarRight(360);
+			if (getTime() - lastBulletFiredTime > 100) {
+
+				distanceToMove += 50;
+				Route r = goToXY(Math.random() * getBattleFieldWidth(), Math.random() * getBattleFieldHeight());
+				setTurn(r.getTurning());
+				setAhead(r.getDistance());
+				waitFor(new MoveCompleteCondition(this, 50));
+
+			} else {
+
+				ahead(distanceToMove);
+				back(distanceToMove);
+			}
+
+			setTurnRadarRight(10000);
+		}
+	}
+
+	public void onHitRobot(HitRobotEvent event) {
+
+		reverseDirection();
+	}
+
+	public void onHitWall(HitWallEvent event) {
+
+		reverseDirection();
+	}
+
+	private void reverseDirection() {
+
+		setTurnRight(90);
+
+		if (movingForward) {
+
+			setBack(400);
+			movingForward = false;
+
+		} else {
+
+			setAhead(400);
+			movingForward = true;
+		}
+
+		waitFor(new TurnCompleteCondition(this, 30));
+	}
+
+	private KnowledgeBase readKnowledgeBase() throws Exception {
+
+		synchronized (CrazyRobot.class) {
+
+			KnowledgeBuilder knowledgeBuilder = KnowledgeBuilderFactory.newKnowledgeBuilder();
+
+			knowledgeBuilder.add(ResourceFactory.newClassPathResource("Sample.drl"), ResourceType.DRL);
+
+			KnowledgeBuilderErrors errors = knowledgeBuilder.getErrors();
+
+			if (errors.size() > 0) {
+
+				for (KnowledgeBuilderError error : errors)
+					System.err.println(error);
+
+				throw new IllegalArgumentException("Could not parse knowledge.");
+			}
+
+			KnowledgeBase kbase = KnowledgeBaseFactory.newKnowledgeBase();
+
+			kbase.addKnowledgePackages(knowledgeBuilder.getKnowledgePackages());
+
+			return kbase;
 		}
 	}
 
 	public void onBulletMissed(BulletMissedEvent event) {
 
-		System.out.println("looking for: " + event.getBullet().getHeading());
+		log.info("Looking for: " + event.getBullet().getHeading());
 
-		String target = bulletsFiredMap.remove((int) event.getBullet().getHeading());
+		String target = getStats().retrieveBulletFired((int) event.getBullet().getHeading());
 
 		if (target != null) {
 
-			Double power = powerMap.get(target);
+			Double power = getStats().getPower(target);
 
 			power = power * 0.7;
 
 			if (power < Rules.MIN_BULLET_POWER)
 				power = Rules.MIN_BULLET_POWER;
 
-			System.out.println("decrease power: " + power + " " + target);
+			log.info("Decrease power: " + power + " " + target);
 
-			powerMap.put(target, power);
+			getStats().setPower(target, power);
 
-			Integer missedCount = bulletsMissedMap.get(target);
+			Integer missedCount = getStats().getBulletsMissedCount(target);
 
 			if (missedCount == null)
 				missedCount = 0;
 
-			bulletsMissedMap.put(target, ++missedCount);
+			getStats().setBulletMissedCount(target, ++missedCount);
 		}
 
 		StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(target);
@@ -100,17 +198,16 @@ public class CrazyRobot extends ImRobot {
 
 	public void onBulletHit(BulletHitEvent event) {
 
-		Double power = powerMap.get(event.getName());
+		Double power = getStats().getPower(event.getName());
 
 		if (power == null)
 			power = Rules.MIN_BULLET_POWER;
 
 		power = power * 1.4;
 
-		// System.out.println("increase power: " + power + " " +
-		// event.getName());
+		// log.info("Increase power: " + power + " " + event.getName());
 
-		powerMap.put(event.getName(), power);
+		getStats().setPower(event.getName(), power);
 
 		StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(event.getName());
 
@@ -123,33 +220,12 @@ public class CrazyRobot extends ImRobot {
 			advanceGunStrategy.goal();
 	}
 
-	public void onHitRobot(HitRobotEvent event) {
-
-		reverseDirection();
-	}
-
-	public void onHitWall(HitWallEvent event) {
-
-		reverseDirection();
-	}
-
-	private void reverseDirection() {
-
-		if (movingForward) {
-
-			setBack(40000);
-			movingForward = false;
-
-		} else {
-
-			setAhead(40000);
-			movingForward = true;
-		}
-	}
-
 	public void onHitByBullet(HitByBulletEvent event) {
 
-		powerMap.put(event.getName(), event.getBullet().getPower());
+		if (event.getName().indexOf(getClass().getSimpleName()) > 0)
+			return;
+
+		getStats().setPower(event.getName(), event.getBullet().getPower());
 
 		double bearing = event.getBearing();
 
@@ -171,16 +247,24 @@ public class CrazyRobot extends ImRobot {
 
 	public void onStatus(StatusEvent e) {
 
+		if (knowledgeSession == null)
+			log.fine("knowledgeSession is NULL");
+		else {
+
+			knowledgeSession.fireAllRules();
+			// log.info("####################################### FIRE ALL RULES");
+		}
+
 		if (escapingFromWall)
 			return;
 
 		double[] axisDistance = howNearAxis();
 
-		// System.out.println("(" + getX() + "," + getY() + ")");
+		// log.info("(" + getX() + "," + getY() + ")");
 
-		// System.out.println("to: " + Util.getDirection(robot));
+		// log.info("to: " + Util.getDirection(robot));
 
-		// System.out.println(axisDistance[0] + " / " + axisDistance[1]);
+		// log.info(axisDistance[0] + " / " + axisDistance[1]);
 
 		if (axisDistance[0] <= xAxisDistancePermitted || axisDistance[1] <= yAxisDistancePermitted) {
 
@@ -190,7 +274,7 @@ public class CrazyRobot extends ImRobot {
 			if (!movingForward)
 				direction = direction.invert();
 
-			// System.out.println("Direction: " + direction + " / xAxis: " +
+			// log.info("Direction: " + direction + " / xAxis: " +
 			// nearestAxis[0] + " / yAxis: "
 			// + nearestAxis[1]);
 
@@ -205,7 +289,6 @@ public class CrazyRobot extends ImRobot {
 			if (xAxisUpToHit || yAxisUpToHit) {
 
 				escapingFromWall = true;
-				// System.out.println("Vai bater!");
 
 				Turning turning = turnToDirection(Util.escapeFromWall(this));
 
@@ -217,14 +300,14 @@ public class CrazyRobot extends ImRobot {
 		}
 	}
 
-	private LinkedList<Double[]> bearingClockwise = new LinkedList<Double[]>();
-	private LinkedList<Double[]> bearingAntiClockwise = new LinkedList<Double[]>();
-
 	public void onScannedRobot(ScannedRobotEvent event) {
 
-		Double power = powerMap.get(event.getName());
+		if (isTeammate(event.getName()))
+			return;
 
-		System.out.println("power: " + power);
+		Double power = getStats().getPower(event.getName());
+
+		// log.info("Current POWER is " + power);
 
 		if (power == null)
 			power = Rules.MIN_BULLET_POWER;
@@ -232,14 +315,14 @@ public class CrazyRobot extends ImRobot {
 		if (event.getDistance() < 50 && getEnergy() > 50)
 			power += power * 0.8;
 
-		powerMap.put(event.getName(), power);
+		getStats().setPower(event.getName(), power);
 
 		double bearing = event.getBearing();
 
 		if (bearing < 0)
 			bearing = 360 + bearing;
 
-		System.out.println("bearing: " + bearing);
+		// log.info("Current BEARING is " + bearing);
 
 		StrategySucess advanceGunStrategy = advanceGunStrategyMap.get(event.getName());
 
@@ -249,6 +332,17 @@ public class CrazyRobot extends ImRobot {
 			advanceGunStrategyMap.put(event.getName(), advanceGunStrategy);
 		}
 
+		TurnStrategy strategy = new AdvanceGunStrategy(advanceGunStrategy);
+		bearing = strategy.getBearing(bearing, event.getDistance());
+
+		double toDegrees = Utils.normalAbsoluteAngleDegrees(bearing + getHeading());
+
+		Turning turning = turnToDirection(getGunHeading(), toDegrees);
+
+		turnGun(turning);
+		fireAntStamp(power);
+		getStats().putBulletFired(toDegrees, event.getName());
+
 		StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(event.getName());
 
 		if (beCloseToEnemyStrategy == null) {
@@ -257,142 +351,21 @@ public class CrazyRobot extends ImRobot {
 			beCloseToEnemyStrategyMap.put(event.getName(), beCloseToEnemyStrategy);
 		}
 
-		bearing = advanceGunStrategy.isActive() ? advanceStrategy(advanceGunStrategy, bearing, event.getDistance())
-				: bearing;
-
-		double toDegrees = Utils.normalAbsoluteAngleDegrees(bearing + getHeading());
-
-		Turning turning = turnToDirection(getGunHeading(), toDegrees);
-
-		turnGun(turning);
-		setFire(power);
-
-		if (beCloseToEnemyStrategy.isActive()) {
-
-			Integer missedCount = bulletsMissedMap.get(event.getName());
-
-			if (missedCount != null && missedCount >= 3) {
-
-				bulletsMissedMap.put(event.getName(), 0);
-
-				beCloseToEnemyStrategy.setUsage(true);
-
-				if (event.getDistance() >= 80) {
-
-					turnRight(event.getBearing());
-					ahead(event.getDistance() * 0.5);
-				}
-
-			} else {
-
-				beCloseToEnemyStrategy.setUsage(false);
-			}
-		}
-
-		System.out.println("inserting: " + toDegrees);
-		bulletsFiredMap.put((int) toDegrees, event.getName());
-
+		MoveStrategy moveStrategy = new MoveCloseToEnemyStrategy(this, beCloseToEnemyStrategy);
+		moveStrategy.ahead(event.getBearing(), event.getDistance(), event.getName());
 	}
 
-	private double advanceStrategy(StrategySucess advanceGunStrategy, double bearing, double distance) {
+	private void fireAntStamp(double power) {
 
-		bearingClockwise.push(new Double[] { bearing, distance });
-		bearingAntiClockwise.push(new Double[] { bearing, distance });
+		fire(power);
 
-		LinkedList<Double[]> bearingClockwiseClone = new LinkedList<Double[]>(bearingClockwise);
-
-		if (bearingClockwise.size() >= 4) {
-
-			Double[] last = null;
-			Double[] cur = null;
-
-			double lastBearing = 0;
-			double curBearing = 0;
-
-			boolean alwaysBigger = true;
-			for (int i = 1; i <= 3; i++) {
-
-				lastBearing = curBearing;
-
-				if (i == 1) {
-
-					last = bearingClockwise.pollLast();
-					// System.out.println("removing: " + last[0]);
-					lastBearing = last[0];
-				}
-
-				cur = bearingClockwise.pollLast();
-				// System.out.println("removing: " + cur[0]);
-				curBearing = cur[0];
-
-				if (!after(curBearing, lastBearing, true))
-					alwaysBigger = false;
-			}
-
-			// double a = cur[1];
-			// double b = last[1];
-			// double c = Math.sqrt(Math.pow(a, 2) + Math.pow(b, 2) - (2 * a
-			// * b
-			// * Math.cos(lastBearing)));
-
-			bearingClockwise = bearingClockwiseClone;
-			bearingClockwise.pollLast();
-
-			if (alwaysBigger) {
-
-				advanceGunStrategy.setUsage(true);
-				bearing += 20;
-
-			} else {
-
-				advanceGunStrategy.setUsage(false);
-
-				// boolean alwaysSmaller = true;
-				//
-				// for (int i = 1; i <= 3; i++) {
-				//
-				// lastBearing = curBearing;
-				// if (i == 1) {
-				//
-				// last = bearingAntiClockwise.pop();
-				// lastBearing = last[0];
-				// }
-				//
-				// cur = bearingAntiClockwise.pop();
-				// curBearing = cur[0];
-				//
-				// if (after(curBearing, lastBearing, false))
-				// alwaysBigger = false;
-				// }
-				//
-				// if (alwaysSmaller) {
-				//
-				// bearing -= 20;
-				// }
-			}
-		}
-
-		if (bearing > 360)
-			bearing = bearing - 360;
-
-		return bearing;
+		lastBulletFiredTime = getTime();
+		distanceToMove = DEFAULT_DISTANCE_TO_MOVE;
 	}
 
-	private boolean after(double hAtT2, double hAtT1, boolean clockwiseDirection) {
+	public void onMessageReceived(MessageEvent event) {
 
-		if (clockwiseDirection) {
-
-			if (hAtT2 > hAtT1)
-				return true;
-			else
-				return false;
-
-		} else {
-
-			if (hAtT2 < hAtT1)
-				return true;
-			else
-				return false;
-		}
+		Message message = (Message) event.getMessage();
+		message.execute(this);
 	}
 }
