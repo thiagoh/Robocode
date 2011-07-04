@@ -1,6 +1,5 @@
 package com.thiagoh.robocode;
 
-import robocode.AdvancedRobot;
 import robocode.TeamRobot;
 
 public abstract class ImRobot extends TeamRobot {

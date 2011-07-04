@@ -6,17 +6,6 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang.ArrayUtils;
-import org.drools.KnowledgeBase;
-import org.drools.KnowledgeBaseFactory;
-import org.drools.builder.KnowledgeBuilder;
-import org.drools.builder.KnowledgeBuilderError;
-import org.drools.builder.KnowledgeBuilderErrors;
-import org.drools.builder.KnowledgeBuilderFactory;
-import org.drools.builder.ResourceType;
-import org.drools.io.ResourceFactory;
-import org.drools.logger.KnowledgeRuntimeLogger;
-import org.drools.logger.KnowledgeRuntimeLoggerFactory;
-import org.drools.runtime.StatefulKnowledgeSession;
 
 import robocode.BulletHitEvent;
 import robocode.BulletMissedEvent;
@@ -44,10 +33,6 @@ public class CrazyRobot extends ImRobot {
 	private Map<String, StrategySucess> advanceGunStrategyMap;
 	private Map<String, StrategySucess> beCloseToEnemyStrategyMap;
 
-	private KnowledgeBase knowledgeBase;
-	private StatefulKnowledgeSession knowledgeSession;
-	private KnowledgeRuntimeLogger logger;
-
 	public CrazyRobot() {
 
 	}
@@ -55,24 +40,6 @@ public class CrazyRobot extends ImRobot {
 	public void run() {
 
 		init();
-
-		try {
-
-			knowledgeBase = readKnowledgeBase();
-
-			knowledgeSession = knowledgeBase.newStatefulKnowledgeSession();
-
-			logger = KnowledgeRuntimeLoggerFactory.newFileLogger(knowledgeSession, "test");
-
-			knowledgeSession.setGlobal("log", log);
-
-			knowledgeSession.insert(this);
-			knowledgeSession.insert(getStats());
-
-		} catch (Exception e) {
-
-			log.severe(e.getMessage());
-		}
 
 		advanceGunStrategyMap = new HashMap<String, StrategySucess>();
 		beCloseToEnemyStrategyMap = new HashMap<String, StrategySucess>();
@@ -130,32 +97,6 @@ public class CrazyRobot extends ImRobot {
 		}
 
 		waitFor(new TurnCompleteCondition(this, 30));
-	}
-
-	private KnowledgeBase readKnowledgeBase() throws Exception {
-
-		synchronized (CrazyRobot.class) {
-
-			KnowledgeBuilder knowledgeBuilder = KnowledgeBuilderFactory.newKnowledgeBuilder();
-
-			knowledgeBuilder.add(ResourceFactory.newClassPathResource("Sample.drl"), ResourceType.DRL);
-
-			KnowledgeBuilderErrors errors = knowledgeBuilder.getErrors();
-
-			if (errors.size() > 0) {
-
-				for (KnowledgeBuilderError error : errors)
-					System.err.println(error);
-
-				throw new IllegalArgumentException("Could not parse knowledge.");
-			}
-
-			KnowledgeBase kbase = KnowledgeBaseFactory.newKnowledgeBase();
-
-			kbase.addKnowledgePackages(knowledgeBuilder.getKnowledgePackages());
-
-			return kbase;
-		}
 	}
 
 	public void onBulletMissed(BulletMissedEvent event) {
@@ -246,14 +187,6 @@ public class CrazyRobot extends ImRobot {
 	private boolean escapingFromWall = false;
 
 	public void onStatus(StatusEvent e) {
-
-		if (knowledgeSession == null)
-			log.fine("knowledgeSession is NULL");
-		else {
-
-			knowledgeSession.fireAllRules();
-			// log.info("####################################### FIRE ALL RULES");
-		}
 
 		if (escapingFromWall)
 			return;
