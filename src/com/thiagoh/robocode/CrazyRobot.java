@@ -54,7 +54,11 @@ public class CrazyRobot extends ImRobot {
 			movingForward = true;
 
 			if (getTime() - lastBulletFiredTime > 100) {
-
+				
+				/*
+				 * Caso o robot esteja há muitas rodadas sem atirar ele deverá andar numa maior distância
+				 * e numa angulação randomica para procurar robots adversários
+				 */
 				distanceToMove += 50;
 				Route r = goToXY(Math.random() * getBattleFieldWidth(), Math.random() * getBattleFieldHeight());
 				setTurn(r.getTurning());
