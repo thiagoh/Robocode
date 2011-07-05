@@ -120,8 +120,8 @@ public class CrazyRobot extends ImRobot {
 
 			power = power * 0.7;
 
-			if (power < Rules.MIN_BULLET_POWER)
-				power = Rules.MIN_BULLET_POWER;
+			if (power < INITIAL_BULLET_POWER)
+				power = INITIAL_BULLET_POWER;
 
 			// log.info("Decrease power: " + power + " " + target);
 
@@ -151,9 +151,9 @@ public class CrazyRobot extends ImRobot {
 		Double power = getStats().getPower(event.getName());
 
 		if (power == null)
-			power = Rules.MIN_BULLET_POWER;
+			power = INITIAL_BULLET_POWER;
 
-		power = power * 1.8;
+		power = power * 2.5;
 
 		// log.info("Increase power: " + power + " " + event.getName());
 
@@ -242,8 +242,11 @@ public class CrazyRobot extends ImRobot {
 
 		String enemy = (String) getAttribute("enemy");
 
-		if (enemy != null && enemy.equals(event.getName()))
+		if (enemy != null && enemy.equals(event.getName())) {
+
+			log.info("Current enemy dead");
 			removeAttribute("enemy");
+		}
 	}
 
 	public void onScannedRobot(ScannedRobotEvent event) {
@@ -253,9 +256,21 @@ public class CrazyRobot extends ImRobot {
 
 		String enemy = (String) getAttribute("enemy");
 
+		RobotOrdered ordered = new RobotOrderedImpl(getName(), getIndex());
+
+		if (firstOrderedRobot().equals(ordered)) {
+
+			if (enemy == null) {
+
+				Message m = new SetEnemyMessage(ordered, event.getName());
+				broadcast(m);
+				m.execute(this);
+				log.info("LEADER");
+			}
+		}
+
 		if (enemy == null) {
 
-			broadcast(new SetEnemyMessage(new RobotOrderedImpl(getName(), getIndex()), event.getName()));
 			enemy = event.getName();
 
 		} else {
@@ -264,9 +279,10 @@ public class CrazyRobot extends ImRobot {
 				return;
 		}
 
-		Double power = getStats().getPower(event.getName());
+		Double power = getStats().getPower(enemy);
 
-		// log.info("Current POWER is " + power);
+		if (log.isDebugEnabled())
+			log.debug("Current POWER is " + power);
 
 		if (power == null)
 			power = INITIAL_BULLET_POWER;
@@ -274,21 +290,19 @@ public class CrazyRobot extends ImRobot {
 		if (event.getDistance() < 50 && getEnergy() > 50)
 			power += power * 0.8;
 
-		getStats().setPower(event.getName(), power);
+		getStats().setPower(enemy, power);
 
 		double bearing = event.getBearing();
 
 		if (bearing < 0)
 			bearing = 360 + bearing;
 
-		// log.info("Current BEARING is " + bearing);
-
-		StrategySucess advanceGunStrategy = advanceGunStrategyMap.get(event.getName());
+		StrategySucess advanceGunStrategy = advanceGunStrategyMap.get(enemy);
 
 		if (advanceGunStrategy == null) {
 
 			advanceGunStrategy = new StrategySucess("Avancar arma projetando movimento futuro do inimigo", 100);
-			advanceGunStrategyMap.put(event.getName(), advanceGunStrategy);
+			advanceGunStrategyMap.put(enemy, advanceGunStrategy);
 		}
 
 		TurnStrategy strategy = new AdvanceGunStrategy(advanceGunStrategy);
@@ -300,18 +314,18 @@ public class CrazyRobot extends ImRobot {
 
 		turnGun(turning);
 		fireAntStamp(power);
-		getStats().putBulletFired(toDegrees, event.getName());
+		getStats().putBulletFired(toDegrees, enemy);
 
-		StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(event.getName());
+		StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(enemy);
 
 		if (beCloseToEnemyStrategy == null) {
 
 			beCloseToEnemyStrategy = new StrategySucess("Chegar perto do inimigo quando errar mtos tiros", 100);
-			beCloseToEnemyStrategyMap.put(event.getName(), beCloseToEnemyStrategy);
+			beCloseToEnemyStrategyMap.put(enemy, beCloseToEnemyStrategy);
 		}
 
 		MoveStrategy moveStrategy = new MoveCloseToEnemyStrategy(this, beCloseToEnemyStrategy);
-		moveStrategy.ahead(event.getBearing(), event.getDistance(), event.getName());
+		moveStrategy.ahead(event.getBearing(), event.getDistance(), enemy);
 	}
 
 	private void fireAntStamp(double power) {
@@ -324,8 +338,9 @@ public class CrazyRobot extends ImRobot {
 
 	public void onMessageReceived(MessageEvent event) {
 
+		log.info(event.getSender() + " sent a message: " + event.getMessage().getClass());
+
 		Message message = (Message) event.getMessage();
 		message.execute(this);
 	}
-
 }

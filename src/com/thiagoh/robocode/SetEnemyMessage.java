@@ -14,7 +14,7 @@ public class SetEnemyMessage implements Message {
 		this.enemy = enemy;
 	}
 
-	public RobotOrdered getTeammate() {
+	public RobotOrdered getSender() {
 		return teammate;
 	}
 
@@ -34,11 +34,14 @@ public class SetEnemyMessage implements Message {
 
 		RobotOrdered robotOrdered = imRobot.firstOrderedRobot();
 
-		if (robotOrdered.equals(getTeammate())) {
+		if (robotOrdered.equals(getSender())) {
 
 			imRobot.putAttribute("enemy", getEnemy());
+			log.info("Set current enemy: " + getEnemy());
 
-			log.info("setting enemy: " + getEnemy());
+		} else {
+
+			log.info("Message discarted. " + getSender() + " is not the leading robot.");
 		}
 	}
 }

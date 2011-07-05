@@ -40,4 +40,8 @@ public class RobotOrderedImpl implements RobotOrdered {
 	public double getIndex() {
 		return index;
 	}
+
+	public String toString() {
+		return getName();
+	}
 }

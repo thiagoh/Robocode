@@ -3,6 +3,7 @@ package com.thiagoh.robocode;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -36,7 +37,10 @@ public abstract class ImRobot extends TeamRobot implements RobotOrdered {
 		info = new RobotStats();
 		orderedRobots = new TreeSet<RobotOrdered>();
 
-		broadcast(new SendIndexMessage(new RobotOrderedImpl(getName(), getIndex())));
+		Message m = new SendIndexMessage(new RobotOrderedImpl(getName(), getIndex()));
+
+		broadcast(m);
+		m.execute(this);
 	}
 
 	public RobotStats getStats() {
@@ -357,7 +361,17 @@ public abstract class ImRobot extends TeamRobot implements RobotOrdered {
 	}
 
 	public RobotOrdered firstOrderedRobot() {
-		return orderedRobots.first();
+
+		try {
+
+			return orderedRobots.first();
+
+		} catch (NoSuchElementException e) {
+
+			orderedRobots.add(this);
+
+			return this;
+		}
 	}
 
 	public SortedSet<RobotOrdered> getOrderedRobots() {
@@ -389,5 +403,9 @@ public abstract class ImRobot extends TeamRobot implements RobotOrdered {
 	public int compareTo(RobotOrdered o) {
 
 		return Double.compare(getIndex(), o.getIndex());
+	}
+
+	public String toString() {
+		return getName();
 	}
 }
