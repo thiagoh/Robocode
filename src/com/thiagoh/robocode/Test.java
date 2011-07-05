@@ -9,5 +9,7 @@ public class Test {
 	public static void main(String[] args) {
 
 		log.info("aaaaaa");
+		log.info("aaaaaa");
+		log.info("aaaaaa");
 	}
 }
