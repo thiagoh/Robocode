@@ -1,24 +1,42 @@
 package com.thiagoh.robocode;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import org.apache.log4j.Logger;
+
 import robocode.TeamRobot;
 
-public abstract class ImRobot extends TeamRobot {
+public abstract class ImRobot extends TeamRobot implements RobotOrdered {
 
+	private static Logger log = Logger.getLogger(ImRobot.class);
+
+	private Map<String, Object> attributes;
 	protected boolean movingForward;
 	private double startedEnergy;
 	private RobotStats info;
+	private double index;
+	private SortedSet<RobotOrdered> orderedRobots;
 
 	public ImRobot() {
 
 		super();
-
-		info = new RobotStats();
 	}
 
 	public void init() {
 
 		startedEnergy = getEnergy();
 		movingForward = true;
+
+		index = Math.random();
+		attributes = new HashMap<String, Object>();
+		info = new RobotStats();
+		orderedRobots = new TreeSet<RobotOrdered>();
+
+		broadcast(new SendIndexMessage(new RobotOrderedImpl(getName(), getIndex())));
 	}
 
 	public RobotStats getStats() {
@@ -240,8 +258,8 @@ public abstract class ImRobot extends TeamRobot {
 		}
 
 		if (turning == null) {
-			System.out.println("headingDegrees: " + headingDegrees + " toDegrees: " + toDegrees);
-			System.out.println("quadrantFrom: " + quadrantFrom + " quadrantTo: " + quadrantTo);
+			log.warn("headingDegrees: " + headingDegrees + " toDegrees: " + toDegrees);
+			log.warn("quadrantFrom: " + quadrantFrom + " quadrantTo: " + quadrantTo);
 		}
 
 		return turning;
@@ -311,4 +329,65 @@ public abstract class ImRobot extends TeamRobot {
 			setTurnRight(degrees);
 	}
 
+	public Object getAttribute(String key) {
+
+		return attributes.get(key);
+	}
+
+	public void putAttribute(String key, Object value) {
+
+		attributes.put(key, value);
+	}
+
+	public void removeAttribute(String key) {
+
+		attributes.remove(key);
+	}
+
+	public void broadcast(Message message) {
+
+		try {
+
+			broadcastMessage(message);
+
+		} catch (IOException e) {
+
+			log.warn(e);
+		}
+	}
+
+	public RobotOrdered firstOrderedRobot() {
+		return orderedRobots.first();
+	}
+
+	public SortedSet<RobotOrdered> getOrderedRobots() {
+		return orderedRobots;
+	}
+
+	public void setOrderedRobots(SortedSet<RobotOrdered> orderedRobots) {
+		this.orderedRobots = orderedRobots;
+	}
+
+	public double getIndex() {
+		return index;
+	}
+
+	public int hashCode() {
+		return getName().hashCode();
+	}
+
+	public boolean equals(Object obj) {
+
+		if (obj instanceof ImRobot == false)
+			return false;
+
+		ImRobot robot = (ImRobot) obj;
+
+		return robot.getName().equals(getName());
+	}
+
+	public int compareTo(RobotOrdered o) {
+
+		return Double.compare(getIndex(), o.getIndex());
+	}
 }

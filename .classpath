@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry kind="lib" path="D:/Programming/java/robocode/libs/robocode.jar" sourcepath="D:/Programming/java/robocode/src">
 		<attributes>
 			<attribute name="javadoc_location" value="file:/D:/Programming/java/robocode/javadoc/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="lib/commons-lang-2.6.jar" sourcepath="D:/Programming/java/commons-lang-2.6/commons-lang-2.6-sources.jar"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.USER_LIBRARY/drools"/>
+	<classpathentry kind="lib" path="lib/commons-lang-2.6.jar"/>
+	<classpathentry kind="lib" path="lib/commons-logging-1.1.1.jar" sourcepath="D:/Programming/java/commons-logging-1.1.1/commons-logging-1.1.1-sources.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-1.2.16.jar" sourcepath="D:/Programming/java/apache-log4j-1.2.16"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

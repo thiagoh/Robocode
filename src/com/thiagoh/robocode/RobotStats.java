@@ -4,22 +4,23 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.logging.Logger;
+
+import org.apache.log4j.Logger;
 
 public class RobotStats implements Serializable {
 
-	private static Logger log = Logger.getLogger(RobotStats.class.getName());
+	private static Logger log = Logger.getLogger(RobotStats.class);
 
 	private int bulletsHit;
 	private Map<String, Double> powerMap;
-	private Map<Integer, String> bulletsFiredMap;
+	private Map<Range, String> bulletsFiredMap;
 	private Map<String, Integer> bulletsMissedMap;
 
 	public RobotStats() {
 
 		bulletsHit = 0;
 		powerMap = new HashMap<String, Double>();
-		bulletsFiredMap = new HashMap<Integer, String>();
+		bulletsFiredMap = new HashMap<Range, String>();
 		bulletsMissedMap = new HashMap<String, Integer>();
 	}
 
@@ -50,14 +51,12 @@ public class RobotStats implements Serializable {
 
 	public String retrieveBulletFired(double heading) {
 
-		return bulletsFiredMap.remove(heading);
+		return bulletsFiredMap.remove(new Range(heading));
 	}
 
 	public void putBulletFired(double heading, String robotname) {
 
-		log.info("inserting: " + heading);
-
-		bulletsFiredMap.put((int) heading, robotname);
+		bulletsFiredMap.put(new Range(heading), robotname);
 	}
 
 	public void increaseBulletPower() {
