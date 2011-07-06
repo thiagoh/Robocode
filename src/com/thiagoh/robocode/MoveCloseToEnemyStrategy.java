@@ -26,8 +26,9 @@ public class MoveCloseToEnemyStrategy implements MoveStrategy {
 
 			if (distance >= 80) {
 
+				imRobot.getStats().incleasePower(enemyName, 50);
 				imRobot.turnRight(bearingTo);
-				imRobot.ahead(distance * 0.5);
+				imRobot.setAhead(distance * 0.7);
 			}
 
 		} else {

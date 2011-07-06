@@ -44,6 +44,19 @@ public class RobotStats implements Serializable {
 		powerMap.put(robotname, power);
 	}
 
+	public void incleasePower(String robotname, double percent) {
+
+		powerMap.put(robotname, powerMap.get(robotname) * (1 + (percent / 100)));
+	}
+
+	public void incleasePowerOfAll(double percent) {
+
+		for (Entry<String, Double> entry : powerMap.entrySet()) {
+
+			incleasePower(entry.getKey(), percent);
+		}
+	}
+
 	public int getBulletsHit() {
 
 		return bulletsHit;
