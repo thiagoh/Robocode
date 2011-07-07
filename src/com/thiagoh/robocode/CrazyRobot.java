@@ -3,8 +3,10 @@ package com.thiagoh.robocode;
 import static robocode.util.Utils.normalRelativeAngleDegrees;
 
 import java.awt.Color;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.log4j.Logger;
 
@@ -34,8 +36,25 @@ public class CrazyRobot extends ImRobot {
 
 	private Map<String, StrategySucess> beCloseToEnemyStrategyMap;
 
+	private Properties properties;
+	private boolean beCloseToEnemy;
+	private boolean followLeaderEnemy;
+
 	public CrazyRobot() {
 
+		properties = new Properties();
+
+		try {
+
+			properties.load(getClass().getClassLoader().getResourceAsStream("com/thiagoh/robocode/tatics.properties"));
+
+			beCloseToEnemy = Boolean.parseBoolean(properties.getProperty("beCloseToEnemy"));
+			followLeaderEnemy = Boolean.parseBoolean(properties.getProperty("followLeaderEnemy"));
+
+		} catch (IOException e) {
+
+			log.error(e);
+		}
 	}
 
 	public void run() {
@@ -175,10 +194,13 @@ public class CrazyRobot extends ImRobot {
 			getStats().setBulletMissedCount(target, ++missedCount);
 		}
 
-		StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(target);
+		if (beCloseToEnemy) {
 
-		if (beCloseToEnemyStrategy != null && beCloseToEnemyStrategy.getUsage())
-			beCloseToEnemyStrategy.fault();
+			StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(target);
+
+			if (beCloseToEnemyStrategy != null && beCloseToEnemyStrategy.getUsage())
+				beCloseToEnemyStrategy.fault();
+		}
 	}
 
 	public void onBulletHit(BulletHitEvent event) {
@@ -194,10 +216,13 @@ public class CrazyRobot extends ImRobot {
 
 		getStats().setPower(event.getName(), power);
 
-		StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(event.getName());
+		if (beCloseToEnemy) {
 
-		if (beCloseToEnemyStrategy != null && beCloseToEnemyStrategy.getUsage())
-			beCloseToEnemyStrategy.goal();
+			StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(event.getName());
+
+			if (beCloseToEnemyStrategy != null && beCloseToEnemyStrategy.getUsage())
+				beCloseToEnemyStrategy.goal();
+		}
 	}
 
 	public void onHitByBullet(HitByBulletEvent event) {
@@ -237,16 +262,16 @@ public class CrazyRobot extends ImRobot {
 
 		String enemy = (String) getAttribute("enemy");
 
-		// if (isLeader()) {
-		//
-		// if (enemy == null) {
-		//
-		// Message m = new SetEnemyMessage(getOrdered(), event.getName());
-		// broadcast(m);
-		// m.execute(this);
-		// log.info("LEADER");
-		// }
-		// }
+		if (followLeaderEnemy && isLeader()) {
+
+			if (enemy == null) {
+
+				Message m = new SetEnemyMessage(getOrdered(), event.getName());
+				broadcast(m);
+				m.execute(this);
+				log.info("LEADER");
+			}
+		}
 
 		if (enemy == null) {
 
@@ -280,16 +305,19 @@ public class CrazyRobot extends ImRobot {
 		fireAntStamp(power);
 		getStats().putBulletFired(toDegrees, enemy);
 
-		StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(enemy);
+		if (beCloseToEnemy) {
 
-		if (beCloseToEnemyStrategy == null) {
+			StrategySucess beCloseToEnemyStrategy = beCloseToEnemyStrategyMap.get(enemy);
 
-			beCloseToEnemyStrategy = new StrategySucess("Chegar perto do inimigo quando errar mtos tiros", 100);
-			beCloseToEnemyStrategyMap.put(enemy, beCloseToEnemyStrategy);
+			if (beCloseToEnemyStrategy == null) {
+
+				beCloseToEnemyStrategy = new StrategySucess("Chegar perto do inimigo quando errar mtos tiros", 100);
+				beCloseToEnemyStrategyMap.put(enemy, beCloseToEnemyStrategy);
+			}
+
+			MoveStrategy moveStrategy = new MoveCloseToEnemyStrategy(this, beCloseToEnemyStrategy);
+			moveStrategy.ahead(event.getBearing(), event.getDistance(), enemy);
 		}
-
-		MoveStrategy moveStrategy = new MoveCloseToEnemyStrategy(this, beCloseToEnemyStrategy);
-		moveStrategy.ahead(event.getBearing(), event.getDistance(), enemy);
 	}
 
 	private void fireAntStamp(final double power) {
