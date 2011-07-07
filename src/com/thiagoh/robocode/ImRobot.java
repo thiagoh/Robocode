@@ -21,21 +21,23 @@ public abstract class ImRobot extends TeamRobot implements RobotOrdered {
 	private RobotStats info;
 	private double index;
 	private SortedSet<RobotOrdered> orderedRobots;
+	private RobotOrdered ordered;
 
 	public ImRobot() {
 
 		super();
+
+		movingForward = true;
+		attributes = new HashMap<String, Object>();
+		info = new RobotStats();
+		orderedRobots = new TreeSet<RobotOrdered>();
 	}
 
 	public void init() {
 
 		startedEnergy = getEnergy();
-		movingForward = true;
-
 		index = Math.random();
-		attributes = new HashMap<String, Object>();
-		info = new RobotStats();
-		orderedRobots = new TreeSet<RobotOrdered>();
+		ordered = new RobotOrderedImpl(getName(), index);
 
 		Message m = new SendIndexMessage(new RobotOrderedImpl(getName(), getIndex()));
 
@@ -358,6 +360,14 @@ public abstract class ImRobot extends TeamRobot implements RobotOrdered {
 
 			log.warn(e);
 		}
+	}
+
+	public boolean isLeader() {
+		return firstOrderedRobot().equals(getOrdered());
+	}
+
+	public RobotOrdered getOrdered() {
+		return ordered;
 	}
 
 	public RobotOrdered firstOrderedRobot() {

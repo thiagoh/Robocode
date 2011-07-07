@@ -1,0 +1,7 @@
+#Robocode robot team
+#Tue Jun 28 18:11:59 BRT 2011
+team.members=com.thiagoh.robocode.CrazyRobot*,com.thiagoh.robocode.CrazyRobot*,com.thiagoh.robocode.CrazyRobot*,com.thiagoh.robocode.CrazyRobot*,com.thiagoh.robocode.CrazyRobot*,com.thiagoh.robocode.CrazyRobot*
+team.author.name=Thiago Andrade
+robocode.version=1.7.3.0
+team.webpage=http\://www.thiagoh.com
+team.description=Time formado por 6 crazyrobots

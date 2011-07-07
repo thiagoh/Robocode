@@ -1,10 +1,11 @@
 package com.thiagoh.robocode;
 
+import static robocode.util.Utils.normalRelativeAngleDegrees;
+
 import java.awt.Color;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.apache.log4j.Logger;
 
 import robocode.BulletHitEvent;
@@ -17,7 +18,6 @@ import robocode.MoveCompleteCondition;
 import robocode.RobotDeathEvent;
 import robocode.Rules;
 import robocode.ScannedRobotEvent;
-import robocode.StatusEvent;
 import robocode.TurnCompleteCondition;
 import robocode.util.Utils;
 
@@ -25,16 +25,13 @@ public class CrazyRobot extends ImRobot {
 
 	private static Logger log = Logger.getLogger(CrazyRobot.class);
 
-	private final static double DEFAULT_DISTANCE_TO_MOVE = 100;
-
-	public static final Double INITIAL_BULLET_POWER = 1.5;
+	private static double DEFAULT_DISTANCE_TO_MOVE;
+	private static double INITIAL_BULLET_POWER = 3.0;
 
 	private double distanceToMove = DEFAULT_DISTANCE_TO_MOVE;
-	private double xAxisDistancePermitted = 50;
-	private double yAxisDistancePermitted = 50;
+
 	private long lastBulletFiredTime;
 
-	private Map<String, StrategySucess> advanceGunStrategyMap;
 	private Map<String, StrategySucess> beCloseToEnemyStrategyMap;
 
 	public CrazyRobot() {
@@ -44,8 +41,18 @@ public class CrazyRobot extends ImRobot {
 	public void run() {
 
 		init();
+		setAdjustGunForRobotTurn(true);
+		setAdjustRadarForGunTurn(true);
 
-		advanceGunStrategyMap = new HashMap<String, StrategySucess>();
+		double battleFieldWidth = getBattleFieldWidth();
+		double battleFieldheight = getBattleFieldHeight();
+
+		DEFAULT_DISTANCE_TO_MOVE = battleFieldWidth * 0.13;
+
+		double[][] xyCorners = { { 50, getBattleFieldHeight() - 50 },
+				{ getBattleFieldWidth() - 50, getBattleFieldWidth() - 50 }, { 50, 50 },
+				{ getBattleFieldWidth() - 50, 50 } };
+
 		beCloseToEnemyStrategyMap = new HashMap<String, StrategySucess>();
 
 		broadcast(new SetColorsMessage(Color.red, Color.black, Color.darkGray, Color.orange));
@@ -62,18 +69,30 @@ public class CrazyRobot extends ImRobot {
 				 * procurar robots adversários
 				 */
 
-				// removeAttribute("enemy");
+				removeAttribute("enemy");
 				distanceToMove += 50;
-				Route r = goToXY(Math.random() * getBattleFieldWidth(), Math.random() * getBattleFieldHeight());
+				Route r = goToXY(Math.random() * battleFieldWidth, Math.random() * battleFieldheight);
 				setTurn(r.getTurning());
 				setAhead(r.getDistance());
 				waitFor(new MoveCompleteCondition(this, 50));
 
 			} else {
 
-				doNothing();
-				// ahead(distanceToMove);
-				// back(distanceToMove);
+				int ix = (int) Math.floor(getIndex() * 4);
+
+				if (Math.abs(xyCorners[ix][0] - getX()) > 40 || Math.abs(xyCorners[ix][1] - getY()) > 40) {
+
+					Route r = goToXY(xyCorners[ix][0], xyCorners[ix][1]);
+					setTurn(r.getTurning());
+					setAhead(r.getDistance());
+					waitFor(new TurnCompleteCondition(this));
+
+				} else {
+
+					setAhead(distanceToMove);
+					setBack(distanceToMove);
+					waitFor(new MoveCompleteCondition(this));
+				}
 			}
 
 			setTurnRadarRight(10000);
@@ -82,12 +101,35 @@ public class CrazyRobot extends ImRobot {
 
 	public void onHitRobot(HitRobotEvent event) {
 
-		reverseDirection();
+		if (isTeammate(event.getName())) {
+
+			reverseDirection();
+			return;
+		}
+
+		double enemyBearing = this.getHeading() + event.getBearing();
+
+		double enemyX = getX() + Math.sin(Math.toRadians(enemyBearing));
+		double enemyY = getY() + Math.cos(Math.toRadians(enemyBearing));
+
+		double dx = enemyX - this.getX();
+		double dy = enemyY - this.getY();
+
+		double theta = Math.toDegrees(Math.atan2(dx, dy));
+
+		getStats().setPower(event.getName(), Rules.MAX_BULLET_POWER);
+		turnGunRight(normalRelativeAngleDegrees(theta - getGunHeading()));
+		fireAntStamp(Rules.MAX_BULLET_POWER);
+		// setTurnRight(enemyBearing);
 	}
 
 	public void onHitWall(HitWallEvent event) {
 
-		reverseDirection();
+		Turning turning = turnToDirection(Util.escapeFromWall(this));
+
+		stop(true);
+		setTurn(turning);
+		setAhead(100);
 	}
 
 	private void reverseDirection() {
@@ -105,7 +147,7 @@ public class CrazyRobot extends ImRobot {
 			movingForward = true;
 		}
 
-		waitFor(new TurnCompleteCondition(this, 30));
+		execute();
 	}
 
 	public void onBulletMissed(BulletMissedEvent event) {
@@ -116,9 +158,7 @@ public class CrazyRobot extends ImRobot {
 
 		if (target != null) {
 
-			Double power = getStats().getPower(target);
-
-			power = power * 0.7;
+			Double power = getStats().getPower(target) * 0.7;
 
 			if (power < INITIAL_BULLET_POWER)
 				power = INITIAL_BULLET_POWER;
@@ -139,11 +179,6 @@ public class CrazyRobot extends ImRobot {
 
 		if (beCloseToEnemyStrategy != null && beCloseToEnemyStrategy.getUsage())
 			beCloseToEnemyStrategy.fault();
-
-		StrategySucess advanceGunStrategy = advanceGunStrategyMap.get(target);
-
-		if (advanceGunStrategy != null && advanceGunStrategy.getUsage())
-			advanceGunStrategy.fault();
 	}
 
 	public void onBulletHit(BulletHitEvent event) {
@@ -163,11 +198,6 @@ public class CrazyRobot extends ImRobot {
 
 		if (beCloseToEnemyStrategy != null && beCloseToEnemyStrategy.getUsage())
 			beCloseToEnemyStrategy.goal();
-
-		StrategySucess advanceGunStrategy = advanceGunStrategyMap.get(event.getName());
-
-		if (advanceGunStrategy != null && advanceGunStrategy.getUsage())
-			advanceGunStrategy.goal();
 	}
 
 	public void onHitByBullet(HitByBulletEvent event) {
@@ -179,55 +209,6 @@ public class CrazyRobot extends ImRobot {
 
 		setTurn(turnToDirection(Utils.normalAbsoluteAngleDegrees(bearing)));
 		setAhead(100);
-
-		waitFor(new TurnCompleteCondition(this));
-	}
-
-	private boolean escapingFromWall = false;
-
-	public void onStatus(StatusEvent e) {
-
-		if (escapingFromWall)
-			return;
-
-		double[] axisDistance = howNearAxis();
-
-		// log.info("(" + getX() + "," + getY() + ")");
-		// log.info("to: " + Util.getDirection(robot));
-		// log.info(axisDistance[0] + " / " + axisDistance[1]);
-
-		if (axisDistance[0] <= xAxisDistancePermitted || axisDistance[1] <= yAxisDistancePermitted) {
-
-			Axis[] nearestAxis = getNearestAxis();
-			Direction direction = Util.getDirection(this);
-
-			if (!movingForward)
-				direction = direction.invert();
-
-			// log.info("Direction: " + direction + " / xAxis: " +
-			// nearestAxis[0] + " / yAxis: "
-			// + nearestAxis[1]);
-
-			boolean xAxisUpToHit = axisDistance[0] <= xAxisDistancePermitted
-					&& ((nearestAxis[0] == Axis.LEFT && ArrayUtils.contains(Direction.TO_WEST, direction)) || (nearestAxis[0] == Axis.RIGHT && ArrayUtils
-							.contains(Direction.TO_EAST, direction)));
-
-			boolean yAxisUpToHit = axisDistance[1] <= yAxisDistancePermitted
-					&& (nearestAxis[1] == Axis.UP && ArrayUtils.contains(Direction.TO_NORTH, direction))
-					|| (nearestAxis[1] == Axis.DOWN && ArrayUtils.contains(Direction.TO_SOUTH, direction));
-
-			if (xAxisUpToHit || yAxisUpToHit) {
-
-				escapingFromWall = true;
-
-				Turning turning = turnToDirection(Util.escapeFromWall(this));
-
-				stop(true);
-				turn(turning);
-				ahead(100);
-				escapingFromWall = false;
-			}
-		}
 	}
 
 	public void onRobotDeath(RobotDeathEvent event) {
@@ -256,18 +237,16 @@ public class CrazyRobot extends ImRobot {
 
 		String enemy = (String) getAttribute("enemy");
 
-		RobotOrdered ordered = new RobotOrderedImpl(getName(), getIndex());
-
-		if (firstOrderedRobot().equals(ordered)) {
-
-			if (enemy == null) {
-
-				Message m = new SetEnemyMessage(ordered, event.getName());
-				broadcast(m);
-				m.execute(this);
-				log.info("LEADER");
-			}
-		}
+		// if (isLeader()) {
+		//
+		// if (enemy == null) {
+		//
+		// Message m = new SetEnemyMessage(getOrdered(), event.getName());
+		// broadcast(m);
+		// m.execute(this);
+		// log.info("LEADER");
+		// }
+		// }
 
 		if (enemy == null) {
 
@@ -288,26 +267,11 @@ public class CrazyRobot extends ImRobot {
 			power = INITIAL_BULLET_POWER;
 
 		if (event.getDistance() < 50 && getEnergy() > 50)
-			power += power * 0.8;
+			power = Rules.MAX_BULLET_POWER;
 
 		getStats().setPower(enemy, power);
 
-		double bearing = event.getBearing();
-
-		if (bearing < 0)
-			bearing = 360 + bearing;
-
-		StrategySucess advanceGunStrategy = advanceGunStrategyMap.get(enemy);
-
-		if (advanceGunStrategy == null) {
-
-			advanceGunStrategy = new StrategySucess("Avancar arma projetando movimento futuro do inimigo", 100);
-			advanceGunStrategyMap.put(enemy, advanceGunStrategy);
-		}
-
-		TurnStrategy strategy = new AdvanceGunStrategy(advanceGunStrategy);
-		bearing = strategy.getBearing(bearing, event.getDistance());
-
+		double bearing = Utils.normalAbsoluteAngleDegrees(event.getBearing());
 		double toDegrees = Utils.normalAbsoluteAngleDegrees(bearing + getHeading());
 
 		Turning turning = turnToDirection(getGunHeading(), toDegrees);
@@ -328,10 +292,8 @@ public class CrazyRobot extends ImRobot {
 		moveStrategy.ahead(event.getBearing(), event.getDistance(), enemy);
 	}
 
-	private void fireAntStamp(double power) {
-
+	private void fireAntStamp(final double power) {
 		fire(power);
-
 		lastBulletFiredTime = getTime();
 		distanceToMove = DEFAULT_DISTANCE_TO_MOVE;
 	}
