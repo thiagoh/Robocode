@@ -36,6 +36,7 @@ public class CrazyRobot extends ImRobot {
 
 	private Map<String, StrategySucess> beCloseToEnemyStrategyMap;
 
+	private ClassLoader classLoader = getClass().getClassLoader();
 	private Properties properties;
 	private boolean beCloseToEnemy;
 	private boolean followLeaderEnemy;
@@ -46,10 +47,11 @@ public class CrazyRobot extends ImRobot {
 
 		try {
 
-			properties.load(getClass().getClassLoader().getResourceAsStream("com/thiagoh/robocode/tatics.properties"));
+			properties.load(classLoader.getResourceAsStream("com/thiagoh/robocode/tatics.properties"));
 
 			beCloseToEnemy = Boolean.parseBoolean(properties.getProperty("beCloseToEnemy"));
 			followLeaderEnemy = Boolean.parseBoolean(properties.getProperty("followLeaderEnemy"));
+			INITIAL_BULLET_POWER = Double.parseDouble(properties.getProperty("initialBulletPower", "3.0"));
 
 		} catch (IOException e) {
 
